@@ -41,6 +41,26 @@ type ServerInfo struct {
 	BuildType  string
 }
 
+// Config ClickHouse 连接配置
+type Config struct {
+	Host            string
+	Port            int
+	Username        string
+	Password        string
+	Database        string
+	Secure          bool          // 使用 TLS
+	SkipVerify      bool          // 跳过 TLS 验证
+	DialTimeout     time.Duration // 连接超时
+	ReadTimeout     time.Duration // 读超时
+	WriteTimeout    time.Duration // 写超时
+	MaxOpenConns    int           // 最大打开连接数
+	MaxIdleConns    int           // 最大空闲连接数
+	ConnMaxLifetime time.Duration // 连接最大生命周期
+	Compression     string        // 压缩方式: lz4, zstd, none
+	// 其他参数
+	Params map[string]string
+}
+
 // NewCLI 创建新的 ClickHouse CLI 实例
 func NewCLI(term Terminal, host string, port int, username, password, database string) *CLI {
 	return &CLI{
@@ -50,6 +70,20 @@ func NewCLI(term Terminal, host string, port int, username, password, database s
 		username: username,
 		password: password,
 		database: database,
+		reader:   NewReader(term),
+		maxRows:  1000,
+	}
+}
+
+// NewCLIWithConfig 使用配置创建 ClickHouse CLI 实例
+func NewCLIWithConfig(term Terminal, config *Config) *CLI {
+	return &CLI{
+		term:     term,
+		host:     config.Host,
+		port:     config.Port,
+		username: config.Username,
+		password: config.Password,
+		database: config.Database,
 		reader:   NewReader(term),
 		maxRows:  1000,
 	}
@@ -98,8 +132,9 @@ func (c *CLI) showWelcome() {
 // Start 启动交互式命令行
 func (c *CLI) Start() error {
 	for {
+		// 设置提示符
 		prompt := c.getPrompt()
-		fmt.Fprintf(c.term, prompt)
+		c.reader.SetPrompt(prompt)
 
 		sqlStr := c.readMultiLine()
 		if sqlStr == "" {
@@ -145,13 +180,24 @@ func (c *CLI) readMultiLine() string {
 			return ""
 		}
 
+		// 如果是第一行，检查是否是特殊命令（不需要分隔符）
+		if len(lines) == 0 {
+			cmdLower := strings.ToLower(trimmed)
+			if cmdLower == "exit" || cmdLower == "quit" || cmdLower == "\\q" || 
+			   cmdLower == "help" || cmdLower == "\\h" || 
+			   cmdLower == "timing" || cmdLower == "\\timing" {
+				return trimmed
+			}
+		}
+
 		lines = append(lines, line)
 
 		if strings.HasSuffix(trimmed, ";") {
 			break
 		}
 
-		fmt.Fprintf(c.term, ":-] ")
+		// 设置多行提示符
+		c.reader.SetPrompt(":-] ")
 	}
 
 	result := strings.Join(lines, "\n")

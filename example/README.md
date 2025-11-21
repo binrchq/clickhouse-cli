@@ -39,3 +39,4 @@ SELECT * FROM system.processes
 - `DROP TABLE` - 删除表
 - `OPTIMIZE TABLE` - 优化表
 
+

@@ -2,10 +2,7 @@ module binrc.com/dbcli/clickhouse-cli
 
 go 1.21
 
-require (
-	github.com/ClickHouse/clickhouse-go/v2 v2.16.0
-	github.com/chzyer/readline v1.5.1
-)
+require github.com/ClickHouse/clickhouse-go/v2 v2.16.0
 
 require (
 	github.com/ClickHouse/ch-go v0.58.2 // indirect
@@ -24,4 +21,3 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-

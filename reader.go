@@ -2,23 +2,33 @@ package clickhouse
 
 import (
 	"io"
-
+	
 	"github.com/chzyer/readline"
 )
 
-// Reader 命令行读取器
+// ReadWriteCloser wraps io.ReadWriter to add a no-op Close method
+type ReadWriteCloser struct {
+	io.ReadWriter
+}
+
+func (rwc *ReadWriteCloser) Close() error {
+	return nil
+}
+
+// Reader 从终端读取输入（使用 readline 以支持SSH session）
 type Reader struct {
 	rl *readline.Instance
 }
 
-// NewReader 创建新的读取器
-func NewReader(term Terminal) *Reader {
+// NewReader 创建新的 Reader
+func NewReader(term io.ReadWriter) *Reader {
+	rwc := &ReadWriteCloser{term}
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          "",
+		Stdin:  rwc,
+		Stdout: rwc,
+		Prompt: "",
 		InterruptPrompt: "^C",
-		EOFPrompt:       "exit",
-		Stdin:           term,
-		Stdout:          term,
+		EOFPrompt: "exit",
 	})
 	if err != nil {
 		panic(err)
@@ -28,17 +38,15 @@ func NewReader(term Terminal) *Reader {
 
 // ReadLine 读取一行输入
 func (r *Reader) ReadLine() (string, error) {
-	line, err := r.rl.Readline()
-	if err == readline.ErrInterrupt {
-		return "", nil
-	} else if err == io.EOF {
-		return "exit", nil
-	}
-	return line, err
+	return r.rl.Readline()
+}
+
+// SetPrompt 设置提示符
+func (r *Reader) SetPrompt(prompt string) {
+	r.rl.SetPrompt(prompt)
 }
 
 // Close 关闭读取器
 func (r *Reader) Close() error {
 	return r.rl.Close()
 }
-
